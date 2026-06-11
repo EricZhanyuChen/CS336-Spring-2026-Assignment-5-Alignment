@@ -124,9 +124,18 @@ def start_server(
     gpu_memory_utilization: float = 0.9,
 ) -> subprocess.Popen:
     env = os.environ.copy()
-    env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    if "CUDA_VISIBLE_DEVICES" not in os.environ:
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
     env["VLLM_SERVER_DEV_MODE"] = "1"
+    env["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
     env["VLLM_LOGGING_LEVEL"] = logging_level
+
+    cu13_lib = os.path.join(os.path.dirname(__file__), "..", ".venv", "lib",
+                            "python3.12", "site-packages", "nvidia", "cu13", "lib")
+    cu13_lib = os.path.normpath(cu13_lib)
+    if os.path.isdir(cu13_lib):
+        existing = env.get("LD_LIBRARY_PATH", "")
+        env["LD_LIBRARY_PATH"] = f"{cu13_lib}:{existing}" if existing else cu13_lib
     command = [
         "vllm",
         "serve",
